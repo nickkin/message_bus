@@ -214,11 +214,13 @@ module MessageBus::Implementation
     user_ids = nil
     group_ids = nil
     client_ids = nil
+    without_user_ids = nil
 
     if opts
       user_ids = opts[:user_ids]
       group_ids = opts[:group_ids]
       client_ids = opts[:client_ids]
+      without_user_ids = opts[:without_user_ids]
     end
 
     raise ::MessageBus::InvalidMessage if (user_ids || group_ids) && global?(channel)
@@ -227,7 +229,8 @@ module MessageBus::Implementation
       data: data,
       user_ids: user_ids,
       group_ids: group_ids,
-      client_ids: client_ids
+      client_ids: client_ids,
+      without_user_ids: without_user_ids
     })
 
     reliable_pub_sub.publish(encode_channel_name(channel), encoded_data)
@@ -370,6 +373,7 @@ module MessageBus::Implementation
     msg.user_ids = parsed["user_ids"]
     msg.group_ids = parsed["group_ids"]
     msg.client_ids = parsed["client_ids"]
+    msg.without_user_ids = parsed["without_user_ids"]
   end
 
   def replay_backlog(channel, last_id, site_id)
