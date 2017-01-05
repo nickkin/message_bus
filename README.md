@@ -82,6 +82,22 @@ MessageBus.configure(group_ids_lookup: proc do |env|
   # return the group ids the user belongs to
   # can be nil or []
 end)
+
+MessageBus.configure(on_middleware_error: proc do |env, e|
+   # If you wish to add special handling based on error
+   # return a rack result array: [status, headers, body]
+   # If you just want to pass it on return nil
+end)
+
+# example of message bus to set user_ids from an initializer in Rails and Devise:
+# config/inializers/message_bus.rb
+MessageBus.user_id_lookup do |env|
+  req = Rack::Request.new(env)
+  if req.session && req.session["warden.user.user.key"] && req.session["warden.user.user.key"][0][0]
+    user = User.find(req.session["warden.user.user.key"][0][0])
+    user.id
+  end
+end
 ```
 
 ### Transport
@@ -202,7 +218,9 @@ headers|{}|Extra headers to be include with request.  Properties and values of o
 
 `MessageBus.start()` : Must be called to startup the MessageBus poller
 
-`MessageBus.subscribe(channel,func,lastId)` : Subscribe to a channel, optionally you may specify the id of the last message you received in the channel.
+`MessageBus.status()` : Return status (started, paused, stopped)
+
+`MessageBus.subscribe(channel,func,lastId)` : Subscribe to a channel, optionally you may specify the id of the last message you received in the channel. The callback accepts three arguments: `func(payload, globalId, messageId)`. You may save globalId or messageId of received messages and use then at a later time when client needs to subscribe, receiving the backlog just after that Id.
 
 `MessageBus.unsubscribe(channel,func)` : Unsubscribe callback from a particular channel
 
@@ -289,7 +307,7 @@ For more information see [Passenger documentation](https://www.phusionpassenger.
 #### Puma
 ```ruby
 # path/to/your/config/puma.rb
-require 'message_bus'
+require 'message_bus' # omit this line for Rails 5
 on_worker_boot do
   MessageBus.after_fork
 end

@@ -73,7 +73,7 @@
         if (callback.channel === message.channel) {
           callback.last_id = message.message_id;
           try {
-            callback.func(message.data);
+            callback.func(message.data, message.global_id, message.message_id);
           }
           catch(e){
             if(console.log) {
@@ -350,6 +350,18 @@
       }
 
       poll();
+    },
+
+    "status": function() {
+      if (paused) {
+         return "paused";
+      } else if (started) {
+         return "started";
+      } else if (stopped) {
+        return "stopped";
+      } else {
+        throw "Cannot determine current status";
+      }
     },
 
     // Subscribe to a channel
