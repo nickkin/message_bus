@@ -14,6 +14,18 @@ Live chat demo per [examples/chat](https://github.com/SamSaffron/message_bus/tre
 
 ### http://chat.samsaffron.com
 
+
+## Want to help?
+
+If you are looking to contribute to this project here are some ideas
+
+- Build backends for other providers (zeromq, rabbitmq, disque) - currently we support pg and redis.
+- Improve and properly document admin dashboard (add opt-in stats, better diagnostics into queues)
+- Improve general documentation (Add examples, refine existing examples)
+- Make MessageBus a nice website
+- Add optional transports for websocket and shared web workers
+- Add `# frozen_string_literal: true` to all non test files and adjust code to allow for it.
+
 ## Can you handle concurrent requests?
 
 **Yes**, MessageBus uses Rack Hijack, this interface allows us to take control of the underlying socket. MessageBus can handle thousands of concurrent long polls on all popular Ruby webservers. MessageBus runs as middleware in your Rack (or by extension Rails) application and does not require a dedicated server. Background work is minimized to ensure it does not interfere with existing non MessageBus traffic.
@@ -71,10 +83,10 @@ MessageBus.publish "/channel", "hello", client_ids: ["XXX","YYY"]
 # message bus determines the user ids and groups based on env
 
 MessageBus.configure(user_id_lookup: proc do |env|
-  # this lookup occurs on JS-client poolings, so that server can retrieve backlog 
+  # this lookup occurs on JS-client poolings, so that server can retrieve backlog
   # for the client considering/matching/filtering user_ids set on published messages
   # if user_id is not set on publish time, any user_id returned here will receive the message
-  
+
   # return the user id here
 end)
 
@@ -200,7 +212,7 @@ Setting|Default|Info
 ----|---|---|
 enableLongPolling|true|Allow long-polling (provided it is enable by the server)
 callbackInterval|15000|Safeguard to ensure background polling does not exceed this interval (in milliseconds)
-backgroundCallbackInterval|60000|Interval to poll when long polling is disabled (either explicitly or due to browser being in backgroud)
+backgroundCallbackInterval|60000|Interval to poll when long polling is disabled (either explicitly or due to browser being in background)
 maxPollInterval|180000|If request to the server start failing, MessageBus will backoff, this is the upper limit of the backoff.
 alwaysLongPoll|false|For debugging you may want to disable the "is browser in background" check and always long-poll
 baseUrl|/|If message bus is mounted in a subdirectory of different domain, you may configure it to perform requests there
@@ -322,14 +334,17 @@ after_fork do |server, worker|
 end
 ```
 
-###
+### Middleware stack in Rails
 
-## Want to help?
+MessageBus middleware has to show up after the session middleware, but depending on how the Rails app is configured that might be either `ActionDispatch::Session::CookieStore` or `ActionDispatch::Session::ActiveRecordStore`. To handle both cases, the middleware is inserted before `ActionDispatch::Flash`.
 
-If you are looking to contribute to this project here are some ideas
+For APIs or apps that have `ActionDispatch::Flash` deleted from the stack the middleware is pushed to the bottom.
 
-- Add a test suite for JavaScript message-bus.js
-- Build backends for other providers (zeromq, rabbitmq, disque)
-- Improve and properly document admin dashboard (add opt-in stats, better diagnostics into queues)
-- Improve general documentation (Add examples, refine existing examples)
-- Make MessageBus a nice website
+Should you want to manipulate the default behavior please refer to [Rails MiddlewareStackProxy documentation](http://api.rubyonrails.org/classes/Rails/Configuration/MiddlewareStackProxy.html) and alter the order of the middlewares in stack in `app/config/initializers/message_bus.rb`
+
+```ruby
+# config/initializers/message_bus.rb
+Rails.application.config do |config|
+  # do anything you wish with config.middleware here
+end
+```
