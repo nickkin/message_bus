@@ -1,3 +1,178 @@
+Unreleased
+
+  - FIX: In the redis backend make the `is_readonly?` method compatible with the redis gem both pre and post v4.0 when the `client` attribute was removed
+
+30-04-2019
+
+- Version 2.2.1
+
+  - FIX: No longer handles exceptions raised in downstream middleware via `on_middleware_error`
+
+28-01-2019
+
+- Version 2.2.0
+
+  - FIX: Ruby HTTP Client not backing off polling on error.
+
+11-12-2018
+
+- Version 2.2.0.pre.2
+
+  - FEATURE: Re-wrote diagnostics UI using React
+  - FEATURE: MessageBus HTTP Ruby Client
+
+30-11-2018
+
+- Version 2.2.0.pre.1
+
+  - FIX: diagnostics stopped working cause a private method was invoked on self
+
+30-11-2018
+
+- Version 2.2.0.pre
+
+- FIX: In redis backend we now expire the key used to track channel id this can cause a redis key leak
+    with large amounts of subscriptions that go away
+- FEATURE: Much extra implementation documentation, and some improvements to usage documentation.
+- FEATURE: Improvements to development workflow:
+  - Fully docker-based development and testing, with no other dependencies.
+  - More stringent Rubocop enforcement and greater compliance.
+  - Testing supported Ruby versions
+  - Better test coverage of some features
+  - Improved testing and assertion of the differences between backends
+  - More stable tests - now pass pretty much every run
+  - Documentation syntax is verified as part of testing
+- FEATURE: Ruby 2.2.0 is no longer supported as it is EOL
+- FEATURE: Better feature parity between backends:
+  - Adds support for backlog expiry to memory backend
+  - Support setting backlog expiry on publication w/ Postgres
+  - Supports setting backlog size on publication for memory/postgres
+- FEATURE: `MessageBus.off` now prevents the server subscription from starting up.
+- FEATURE: Trims unused parts of the public API:
+  - Methods removed:
+    * ConnectionManager#stats (never used and the ConnectionManager is not exposed to application code)
+    * Client#cancel (effectively duplicate of Client#close and the Client is only available via the ConnectionManager, thus not available to application code)
+
+  - Methods made private:
+    * MessageBus::Implementation#encode_channel_name
+    * MessageBus::Implementation#decode_channel_name
+    * Client#in_async?
+    * Client#ensure_closed!
+    * ConnectionManager#subscribe_client
+    * Diagnostics.full_process_path
+    * Diagnostics.hostname
+    * MessageBus::Rack::Diagnostics#js_asset
+    * MessageBus::Rack::Diagnostics#generate_script_tag
+    * MessageBus::Rack::Diagnostics#file_hash
+    * MessageBus::Rack::Diagnostics#asset_contents
+    * MessageBus::Rack::Diagnostics#asset_path
+    * MessageBus::Rack::Diagnostics#index
+    * MessageBus::Rack::Diagnostics#translate_handlebars
+    * MessageBus::Rack::Diagnostics#indent
+    * MessageBus::Rack::Middleware#start_listener
+    * MessageBus::Rack::Middleware#close_db_connection!
+    * MessageBus::Rack::Middleware#add_client_with_timeout
+
+  - Methods switched from protected to private:
+    * MessageBus::Implementation#global?
+    * MessageBus::Implementation#decode_message!
+    * MessageBus::Implementation#replay_backlog
+    * MessageBus::Implementation#subscribe_impl
+    * MessageBus::Implementation#unsubscribe_impl
+    * MessageBus::Implementation#ensure_subscriber_thread
+    * MessageBus::Implementation#new_subscriber_thread
+    * MessageBus::Implementation#global_subscribe_thread
+    * MessageBus::Implementation#multi_each
+    * Client#write_headers
+    * Client#write_chunk
+    * Client#write_and_close
+    * Client#messages_to_json
+
+15-10-2018
+
+- Version 2.1.6
+
+- FEATURE: `MesssageBus.publish` accepts option `site_id` to publish to a site
+- FEATURE: Added MessageBus::DistributedCache for cross process caching
+- PERF: Use monotonic times in timer thread
+- FEATURE: min poll interval is now configurable client side
+
+16-05-2018
+
+- Version 2.1.5
+
+- FIX: In some cases a 30 second initial delay could happen cause client lost info about long poller
+
+20-04-2018
+
+- Version 2.1.4
+
+- FIX: Subtle issue where poll timeout may not be cleared causing multiple concurrent polls
+- FIX: Add extra protection for poller to ensure there is never a case where multiple ajax happens concurrently
+
+09-01-2018
+
+- Version 2.1.2
+
+- FEATURE: minHiddenPollInterval set to 1500ms out of the box, ensures we never do hidden tab
+   polls at a high rate if tons of tabs are open
+- FEATURE: added random 500ms to delayed polls to increase tab entropy
+
+18-12-2017
+
+- Version 2.1.1
+
+- FEATURE: allow setting of max_backlog_size and max_backlog_age on publish for redis provider
+
+18-12-2017
+
+- Version 2.1.0
+
+- FEATURE: you can now lookup last N messages on channel on subscribe from JavaScript
+   Subscribe at position (-1 - numberOfMessages) from the client
+
+24-11-2017
+
+- Version 2.0.9
+
+- PERF: faster serialization of messages
+- FEATURE: on backend flush web clients will resume and continue to get all new messages
+
+06-10-2017
+
+- Version 2.0.8
+
+- Fix: Make redis readonly detection more robust
+
+02-10-2017
+
+- Version 2.0.7
+
+- Fix/Feature: use LUA script for publishing to bus, this eliminates a race condition
+   and ensures that we are never stuck in a multi transaction by mistake
+
+
+29-09-2017
+
+- Version 2.0.6
+
+- Fix: correct after_fork so it correctly disconnnects redis
+- Fix: correct message_bus #destroy used in tests to clean up spec (deadlock)
+- Fix: deliver backlog unconditionally when polling (and not long polling)
+
+16-08-2017
+
+- Version 2.0.5
+
+- Quick fix, build on earlier version of Ruby cause https://github.com/rubygems/rubygems/issues/1448 is still open
+
+- Version 2.0.3
+- Fix: broken MessageBus.redis_config
+- Perf: publish status message for filtered messages
+- Perf: add frozen strings to save on memory
+- Feature: improved logging when messages are dropped
+- Fix: handle missing actiondispatch flash
+
 25-08-2016
 
 - Version 2.0.2

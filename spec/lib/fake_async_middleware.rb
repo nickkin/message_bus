@@ -1,7 +1,6 @@
 require 'http/parser'
 class FakeAsyncMiddleware
-
-  def initialize(app,config={})
+  def initialize(app, config = {})
     @app = app
     @bus = config[:message_bus] || MessageBus
     @simulate_thin_async = false
@@ -30,7 +29,6 @@ class FakeAsyncMiddleware
   def in_async?
     @in_async
   end
-
 
   def simulate_thin_async?
     @simulate_thin_async && @bus.long_polling_enabled?
@@ -63,7 +61,6 @@ class FakeAsyncMiddleware
 
     [parser.status_code, parser.headers, [body]]
   end
-
 
   def call_rack_hijack(env)
     # this is not to spec, the spec actually return, but here we will simply simulate and block
@@ -106,7 +103,6 @@ class FakeAsyncMiddleware
 
     @in_async = false
     result || [500, {}, ['timeout']]
-
   end
 
   def call_thin_async(env)
@@ -147,4 +143,3 @@ class FakeAsyncMiddleware
     result || [500, {}, ['timeout']]
   end
 end
-

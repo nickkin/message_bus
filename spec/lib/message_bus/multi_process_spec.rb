@@ -1,7 +1,6 @@
 require_relative '../../spec_helper'
 require 'message_bus'
 
-unless MESSAGE_BUS_CONFIG[:backend] == :memory
 describe PUB_SUB_CLASS do
   def self.error!
     @error = true
@@ -12,7 +11,7 @@ describe PUB_SUB_CLASS do
   end
 
   def new_bus
-    PUB_SUB_CLASS.new(MESSAGE_BUS_CONFIG.merge(:db => 10))
+    PUB_SUB_CLASS.new(MESSAGE_BUS_CONFIG.merge(db: 10))
   end
 
   def work_it
@@ -38,14 +37,15 @@ describe PUB_SUB_CLASS do
 
   n = ENV['MULTI_PROCESS_TIMES'].to_i
   n = 1 if n < 1
-  n.times do 
+  n.times do
     it 'gets every response from child processes' do
+      test_never :memory
       skip("previous error") if self.class.error?
       GC.start
       new_bus.reset!
       begin
-        pids = (1..10).map{spawn_child}
-        expected_responses = pids.map{|x| (0...10).map{|i| "0#{i}-#{x}"}}.flatten
+        pids = (1..10).map { spawn_child }
+        expected_responses = pids.map { |x| (0...10).map { |i| "0#{i}-#{x}" } }.flatten
         unexpected_responses = []
         bus = new_bus
         t = Thread.new do
@@ -57,7 +57,7 @@ describe PUB_SUB_CLASS do
             end
           end
         end
-        10.times{|i| bus.publish("/echo", "0#{i}")}
+        10.times { |i| bus.publish("/echo", "0#{i}") }
         wait_for 4000 do
           expected_responses.empty?
         end
@@ -83,5 +83,4 @@ describe PUB_SUB_CLASS do
       end
     end
   end
-end
 end

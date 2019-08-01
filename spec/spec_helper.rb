@@ -7,23 +7,20 @@ require 'message_bus'
 require 'minitest/autorun'
 require 'minitest/spec'
 
+require_relative "helpers"
+
 backend = (ENV['MESSAGE_BUS_BACKEND'] || :redis).to_sym
-MESSAGE_BUS_CONFIG = {:backend=>backend}
+MESSAGE_BUS_CONFIG = test_config_for_backend(backend)
 require "message_bus/backends/#{backend}"
 PUB_SUB_CLASS = MessageBus::BACKENDS.fetch(backend)
-if backend == :postgres
-  MESSAGE_BUS_CONFIG.merge!(:backend_options=>{:user=>ENV['PGUSER'] || ENV['USER'], :dbname=>ENV['PGDATABASE'] || 'message_bus_test'})
-end
 puts "Running with backend: #{backend}"
 
-def wait_for(timeout_milliseconds)
-  timeout = (timeout_milliseconds + 0.0) / 1000
-  finish = Time.now + timeout
+def test_only(*backends)
+  backend = MESSAGE_BUS_CONFIG[:backend]
+  skip "Test doesn't apply to #{backend}" unless backends.include?(backend)
+end
 
-  Thread.new do
-    while Time.now < finish && !yield
-      sleep(0.001)
-    end
-  end.join
-
+def test_never(*backends)
+  backend = MESSAGE_BUS_CONFIG[:backend]
+  skip "Test doesn't apply to #{backend}" if backends.include?(backend)
 end
