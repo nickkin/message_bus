@@ -6,6 +6,9 @@
   // http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
   var callbacks, clientId, failCount, shouldLongPoll, queue, responseCallbacks, uniqueId, baseUrl;
   var me, started, stopped, longPoller, pollTimeout, paused, later, jQuery, interval, chunkedBackoff;
+  var delayPollTimeout;
+
+  var ajaxInProgress = false;
 
   uniqueId = function() {
     return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -48,6 +51,32 @@
     }
   };
 
+  var hasLocalStorage = (function() {
+    try {
+      localStorage.setItem("mbTestLocalStorage", Date.now());
+      localStorage.removeItem("mbTestLocalStorage");
+      return true;
+    } catch(e) {
+      return false;
+    }
+  })();
+
+  var updateLastAjax = function() {
+    if (hasLocalStorage) {
+      localStorage.setItem("__mbLastAjax", Date.now());
+    }
+  }
+
+  var hiddenTabShouldWait = function() {
+    if (hasLocalStorage && isHidden()) {
+      var lastAjaxCall = parseInt(localStorage.getItem("__mbLastAjax"), 10);
+      var deltaAjax = Date.now() - lastAjaxCall;
+
+      return deltaAjax >= 0 && deltaAjax < me.minHiddenPollInterval;
+    }
+    return false;
+  }
+
   var hasonprogress = (new XMLHttpRequest()).onprogress === null;
   var allowChunked = function(){
     return me.enableChunkedEncoding && hasonprogress;
@@ -77,7 +106,7 @@
           }
           catch(e){
             if(console.log) {
-              console.log("MESSAGE BUS FAIL: callback " + callback.channel +  " caused exception " + e.message);
+              console.log("MESSAGE BUS FAIL: callback " + callback.channel +  " caused exception " + e.stack);
             }
           }
         }
@@ -106,7 +135,13 @@
     return false;
   };
 
-  longPoller = function(poll,data){
+  longPoller = function(poll, data) {
+
+    if (ajaxInProgress) {
+      // never allow concurrent ajax reqs
+      return;
+    }
+
     var gotData = false;
     var aborted = false;
     lastAjax = new Date();
@@ -182,6 +217,10 @@
     if (!me.ajax){
       throw new Error("Either jQuery or the ajax adapter must be loaded");
     }
+
+    updateLastAjax();
+
+    ajaxInProgress = true;
     var req = me.ajax({
       url: me.baseUrl + "message-bus/" + me.clientId + "/poll" + (!longPoll ? "?dlp=t" : ""),
       data: data,
@@ -233,10 +272,13 @@
         }
       },
       complete: function() {
+
+        ajaxInProgress = false;
+
         var interval;
         try {
           if (gotData || aborted) {
-            interval = 100;
+            interval = me.minPollInterval;
           } else {
             interval = me.callbackInterval;
             if (failCount > 2) {
@@ -260,7 +302,18 @@
           }
         }
 
-        pollTimeout = setTimeout(function(){pollTimeout=null; poll();}, interval);
+        if (pollTimeout) {
+          clearTimeout(pollTimeout);
+          pollTimeout = null;
+        }
+
+        if (started) {
+          pollTimeout = setTimeout(function(){
+            pollTimeout = null;
+            poll();
+          }, interval);
+        }
+
         me.longPoll = null;
       }
     });
@@ -269,10 +322,13 @@
   };
 
   me = {
+    /* shared between all tabs */
+    minHiddenPollInterval: 1500,
     enableChunkedEncoding: true,
     enableLongPolling: true,
     callbackInterval: 15000,
     backgroundCallbackInterval: 60000,
+    minPollInterval: 100,
     maxPollInterval: 3 * 60 * 1000,
     callbacks: callbacks,
     clientId: clientId,
@@ -305,11 +361,18 @@
     stop: function() {
       stopped = true;
       started = false;
+      if (delayPollTimeout) {
+        clearTimeout(delayPollTimeout);
+        delayPollTimeout = null;
+      }
+      if (me.longPoll) {
+        me.longPoll.abort();
+      }
     },
 
     // Start polling
     start: function() {
-      var poll, delayPollTimeout;
+      var poll;
 
       if (started) return;
       started = true;
@@ -322,9 +385,12 @@
           return;
         }
 
-        if (callbacks.length === 0) {
+        if (callbacks.length === 0 || hiddenTabShouldWait()) {
           if(!delayPollTimeout) {
-            delayPollTimeout = setTimeout(function(){ delayPollTimeout = null; poll();}, 500);
+            delayPollTimeout = setTimeout(function() {
+              delayPollTimeout = null;
+              poll();
+            }, parseInt(500 + Math.random() * 500));
           }
           return;
         }
@@ -334,7 +400,11 @@
           data[callbacks[i].channel] = callbacks[i].last_id;
         }
 
-        me.longPoll = longPoller(poll,data);
+        // could possibly already be started
+        // notice the delay timeout above
+        if (!me.longPoll) {
+          me.longPoll = longPoller(poll, data);
+        }
       };
 
 
@@ -342,7 +412,11 @@
       if(document.addEventListener && 'hidden' in document){
         me.visibilityEvent = global.document.addEventListener('visibilitychange', function(){
           if(!document.hidden && !me.longPoll && pollTimeout){
+
             clearTimeout(pollTimeout);
+            clearTimeout(delayPollTimeout);
+
+            delayPollTimeout = null;
             pollTimeout = null;
             poll();
           }
@@ -365,15 +439,25 @@
     },
 
     // Subscribe to a channel
+    // if lastId is 0 or larger, it will recieve messages AFTER that id
+    // if lastId is negative it will perform lookbehind
+    // -1 will subscribe to all new messages
+    // -2 will recieve last message + all new messages
+    // -3 will recieve last 2 messages + all new messages
     subscribe: function(channel, func, lastId) {
 
       if(!started && !stopped){
         me.start();
       }
 
-      if (typeof(lastId) !== "number" || lastId < -1){
+      if (typeof(lastId) !== "number") {
         lastId = -1;
       }
+
+      if (typeof(channel) !== "string") {
+        throw "Channel name must be a string!";
+      }
+
       callbacks.push({
         channel: channel,
         func: func,

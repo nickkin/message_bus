@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # there is also another in cramp this is from https://github.com/macournoyer/thin_async/blob/master/lib/thin/async.rb
 module Thin
   unless defined?(DeferrableBody)
@@ -20,16 +22,19 @@ module Thin
       end
 
       private
-        def schedule_dequeue
-          return unless @body_callback
-          ::EM.next_tick do
-            next unless body = @queue.shift
-            body.each do |chunk|
-              @body_callback.call(chunk)
-            end
-            schedule_dequeue unless @queue.empty?
+
+      def schedule_dequeue
+        return unless @body_callback
+
+        ::EM.next_tick do
+          next unless body = @queue.shift
+
+          body.each do |chunk|
+            @body_callback.call(chunk)
           end
+          schedule_dequeue unless @queue.empty?
         end
+      end
     end
   end
 
@@ -40,7 +45,7 @@ module Thin
     attr_reader :headers, :callback, :closed
     attr_accessor :status
 
-    def initialize(env, status=200, headers={})
+    def initialize(env, status = 200, headers = {})
       @callback = env['async.callback']
       @body = DeferrableBody.new
       @status = status
@@ -50,6 +55,7 @@ module Thin
 
     def send_headers
       return if @headers_sent
+
       @callback.call [@status, @headers, @body]
       @headers_sent = true
     end
@@ -66,6 +72,5 @@ module Thin
       send_headers
       ::EM.next_tick { @body.succeed }
     end
-
   end
 end

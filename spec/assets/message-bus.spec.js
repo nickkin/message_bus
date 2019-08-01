@@ -40,11 +40,11 @@ describe("Messagebus", function() {
       expect(spec.MockedXMLHttpRequest.prototype.send).toHaveBeenCalled()
       expect(onMessageSpy).not.toHaveBeenCalled()
       MessageBus.resume()
-    }, 510) // greater than delayPollTimeout of 500
+    }, 1010) // greater than delayPollTimeout of 500 + 500 random
     setTimeout(function(){
       expect(onMessageSpy).toHaveBeenCalled()
       done()
-    }, 550) // greater than first timeout above
+    }, 1050) // greater than first timeout above
   });
 
   it('can unsubscribe from callbacks', function(done){
@@ -82,6 +82,12 @@ describe("Messagebus", function() {
     expect(window.MessageBus).toBeUndefined();
     // reset it so afterEach has something to work on
     window.MessageBus = mb;
+  });
+
+  it('respects minPollInterval setting with defaults', function(){
+    expect(MessageBus.minPollInterval).toEqual(100);
+    MessageBus.minPollInterval = 1000;
+    expect(MessageBus.minPollInterval).toEqual(1000);
   });
 
   testMB('sends using custom header', function(){
