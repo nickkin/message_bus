@@ -345,7 +345,7 @@ module MessageBus::Implementation
       group_ids: group_ids,
       client_ids: client_ids,
       without_user_ids: without_user_ids
-    })
+    )
 
     channel_opts = nil
 
